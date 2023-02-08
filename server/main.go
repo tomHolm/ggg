@@ -3,7 +3,37 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 )
+
+const SHORT_PREFIX = "sh"
+const LONG_PREFIX = "shp"
+
+type Reduplicator struct {
+	input []byte
+}
+
+func (r Reduplicator) run() []byte {
+	inputStr := string(r.input)
+	words := strings.Split(inputStr, " ")
+	for i := 0; i < len(words); i++ {
+		words[i] = r.processWord(words[i])
+	}
+	return []byte(strings.Join(words, " "))
+}
+
+func (r Reduplicator) processWord(s string) string {
+	s = strings.ToLower(s)
+	pos := strings.IndexAny(s, "aeyiou")
+	switch pos {
+	case 0:
+		return LONG_PREFIX + s
+	case 1:
+		return SHORT_PREFIX + s
+	default:
+		return SHORT_PREFIX + s[pos-1:]
+	}
+}
 
 func main() {
 	listener, err := net.Listen("tcp", ":4545")
@@ -39,7 +69,9 @@ func handleConnection(conn net.Conn) {
 		msg := string(input[0:n])
 		fmt.Println("Msg: ", msg)
 
-		response := "sh" + msg
-		conn.Write([]byte(response))
+		reduplicator := Reduplicator{input}
+		result := reduplicator.run()
+		fmt.Println("Response: ", string(result))
+		conn.Write(result)
 	}
 }
